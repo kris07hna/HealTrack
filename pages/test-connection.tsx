@@ -26,24 +26,24 @@ export default function TestConnection() {
     try {
       const client = supabase;
       addResult('Supabase Client', true, { client: 'Created successfully' });
-    } catch (error) {
-      addResult('Supabase Client', false, { error: error.message });
+    } catch (error: any) {
+      addResult('Supabase Client', false, { error: error.message || 'Unknown error' });
     }
 
     // Test 3: Simple query
     try {
       const { data, error } = await supabase.from('profiles').select('count').limit(1);
       addResult('Basic Query', !error, { data, error: error?.message });
-    } catch (error) {
-      addResult('Basic Query', false, { error: error.message });
+    } catch (error: any) {
+      addResult('Basic Query', false, { error: error.message || 'Unknown error' });
     }
 
     // Test 4: Auth check
     try {
       const { data, error } = await supabase.auth.getSession();
       addResult('Auth Check', !error, { hasSession: !!data.session, error: error?.message });
-    } catch (error) {
-      addResult('Auth Check', false, { error: error.message });
+    } catch (error: any) {
+      addResult('Auth Check', false, { error: error.message || 'Unknown error' });
     }
 
     // Test 5: Test profiles table
@@ -53,8 +53,8 @@ export default function TestConnection() {
         .select('id')
         .limit(1);
       addResult('Profiles Table', !error, { count: data?.length || 0, error: error?.message });
-    } catch (error) {
-      addResult('Profiles Table', false, { error: error.message });
+    } catch (error: any) {
+      addResult('Profiles Table', false, { error: error.message || 'Unknown error' });
     }
 
     // Test 6: Test health_goals table
@@ -64,8 +64,8 @@ export default function TestConnection() {
         .select('id')
         .limit(1);
       addResult('Health Goals Table', !error, { count: data?.length || 0, error: error?.message });
-    } catch (error) {
-      addResult('Health Goals Table', false, { error: error.message });
+    } catch (error: any) {
+      addResult('Health Goals Table', false, { error: error.message || 'Unknown error' });
     }
 
     setLoading(false);

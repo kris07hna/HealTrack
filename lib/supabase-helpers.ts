@@ -1,5 +1,5 @@
 // Supabase helper functions for HealTrack
-import { supabase, supabaseAdmin } from './database'
+import { supabase } from './database'
 import { Database } from './database'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
