@@ -76,14 +76,32 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: RegisterFormP
       return;
     }
 
-    const success = await register(formData);
+    const result = await register(formData);
     
-    if (success) {
-      addNotification({
-        type: 'success',
-        title: 'Account created!',
-        message: 'Welcome to HealTrack. Your health journey starts now.',
-      });
+    if (result.success) {
+      if (result.needsConfirmation) {
+        addNotification({
+          type: 'success',
+          title: 'Account Created Successfully! 🎉',
+          message: 'Please check your email and click the confirmation link to activate your account.',
+        });
+        
+        // Add a second notification with more details
+        setTimeout(() => {
+          addNotification({
+            type: 'info',
+            title: 'Email Confirmation Required 📧',
+            message: 'Check your inbox (and spam folder) for a confirmation email from HealTrack. You can sign in after confirming your email.',
+          });
+        }, 2000);
+      } else {
+        addNotification({
+          type: 'success',
+          title: 'Account Created Successfully! 🎉',
+          message: 'Welcome to HealTrack! Your account is ready to use.',
+        });
+      }
+      
       onClose();
     } else {
       addNotification({

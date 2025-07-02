@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FaTimes, FaPlus } from 'react-icons/fa';
-import { symptomStorage } from '@/lib/storage';
-import { useAuth } from '@/lib/auth';
+import { symptomsHelpers } from '../../lib/supabase-helpers';
+import { useAuth } from '../../lib/auth';
+import { useNotifications } from '../../lib/notifications';
 
 interface SymptomFormProps {
   onClose: () => void;
@@ -54,6 +55,7 @@ export default function SymptomForm({ onClose, onSubmit }: SymptomFormProps) {
   const [customSymptom, setCustomSymptom] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
 
   const handleSymptomSelect = (symptom: string) => {
     setFormData({ ...formData, symptom });
@@ -71,27 +73,59 @@ export default function SymptomForm({ onClose, onSubmit }: SymptomFormProps) {
     e.preventDefault();
     
     if (!formData.symptom.trim()) {
+      addNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please select or enter a symptom'
+      });
+      return;
+    }
+
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Authentication Required',
+        message: 'Please sign in to log symptoms'
+      });
       return;
     }
 
     setIsLoading(true);
 
     try {
+      console.log('🔄 Submitting symptom from QuickAction form...');
+      
       const symptomData = {
-        userId: user?.id || 'anonymous',
-        symptom: formData.symptom,
+        user_id: user.id,
+        title: formData.symptom,
+        description: formData.description || null,
         severity: formData.severity,
-        description: formData.description || undefined,
-        bodyPart: formData.bodyPart || undefined,
-        duration: formData.duration ? parseInt(formData.duration) : undefined,
-        triggers: formData.triggers ? formData.triggers.split(',').map(t => t.trim()) : undefined,
-        notes: formData.notes || undefined,
+        body_part: formData.bodyPart || null,
+        duration: formData.duration || null,
+        triggers: formData.triggers || null,
+        medications_taken: formData.notes ? [formData.notes] : null
       };
 
-      symptomStorage.save(symptomData);
-      onSubmit();
+      console.log('📝 Symptom data:', symptomData);
+
+      const result = await symptomsHelpers.addSymptom(symptomData);
+      console.log('✅ Symptom saved successfully:', result);
+
+      addNotification({
+        type: 'success',
+        title: 'Symptom Logged Successfully! ✅',
+        message: `${formData.symptom} (severity ${formData.severity}) has been saved to your health records.`
+      });
+
+      onSubmit(); // This will refresh the dashboard
+      onClose(); // Close the modal
     } catch (error) {
-      console.error('Failed to save symptom:', error);
+      console.error('❌ Failed to save symptom:', error);
+      addNotification({
+        type: 'error',
+        title: 'Failed to Save Symptom',
+        message: error instanceof Error ? error.message : 'Could not save symptom to database. Please try again.'
+      });
     } finally {
       setIsLoading(false);
     }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FaTimes, FaClock } from 'react-icons/fa';
-import { medicationStorage } from '@/lib/storage';
+import { medicationsHelpers } from '@/lib/supabase-helpers';
 import { useAuth } from '@/lib/auth';
+import { useNotifications } from '@/lib/notifications';
 
 interface MedicationFormProps {
   onClose: () => void;
@@ -36,33 +37,63 @@ export default function MedicationForm({ onClose, onSubmit }: MedicationFormProp
   });
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim() || !formData.dosage.trim() || !formData.frequency) {
+      addNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fill in all required fields.',
+      });
+      return;
+    }
+
+    if (!user?.id) {
+      addNotification({
+        type: 'error',
+        title: 'Authentication Error',
+        message: 'User not authenticated. Please sign in again.',
+      });
       return;
     }
 
     setIsLoading(true);
 
     try {
+      console.log('🔄 Saving medication to Supabase...');
+      
       const medicationData = {
-        userId: user?.id || 'anonymous',
+        user_id: user.id,
         name: formData.name.trim(),
         dosage: formData.dosage.trim(),
         frequency: formData.frequency,
-        startDate: new Date(formData.startDate),
-        endDate: formData.endDate ? new Date(formData.endDate) : undefined,
-        notes: formData.notes || undefined,
-        reminders: formData.reminders,
-        reminderTimes: formData.reminders ? formData.reminderTimes : [],
+        start_date: formData.startDate,
+        end_date: formData.endDate || null,
+        notes: formData.notes || null,
       };
 
-      medicationStorage.save(medicationData);
+      const savedMedication = await medicationsHelpers.addMedication(medicationData);
+      
+      console.log('✅ Medication saved successfully:', savedMedication);
+      
+      addNotification({
+        type: 'success',
+        title: 'Medication Added',
+        message: `${formData.name} has been successfully added to your medication list.`,
+      });
+      
       onSubmit();
     } catch (error) {
-      console.error('Failed to save medication:', error);
+      console.error('❌ Failed to save medication:', error);
+      
+      addNotification({
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Failed to save medication. Please check your connection and try again.',
+      });
     } finally {
       setIsLoading(false);
     }

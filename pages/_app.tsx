@@ -4,6 +4,7 @@ import Head from 'next/head';
 import '@/styles/globals.css';
 import { AuthProvider } from '@/lib/auth';
 import { NotificationProvider } from '@/lib/notifications';
+import { ThemeProvider } from '../lib/theme';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [mounted, setMounted] = useState(false);
@@ -29,9 +30,9 @@ export default function App({ Component, pageProps }: AppProps) {
       </Head>
       <AuthProvider>
         <NotificationProvider>
-          <div className="min-h-screen bg-gray-50">
+          <ThemeProvider>
             <Component {...pageProps} />
-          </div>
+          </ThemeProvider>
         </NotificationProvider>
       </AuthProvider>
     </>
