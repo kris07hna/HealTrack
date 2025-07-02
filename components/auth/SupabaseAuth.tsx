@@ -1,6 +1,7 @@
 // Simple Supabase authentication component
 import { useState, useEffect } from 'react'
-import { supabase, authHelpers } from '../../lib/supabase-helpers'
+import { supabase } from '../../lib/database'
+import { authHelpers } from '../../lib/supabase-helpers'
 import { User } from '@supabase/supabase-js'
 
 interface AuthProps {
