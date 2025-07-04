@@ -45,7 +45,6 @@ import {
 } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth';
 import { useNotifications } from '@/lib/notifications';
-import { getDashboardData, createSampleData, exportData } from '@/lib/storage';
 import { symptomsHelpers, medicationsHelpers, profileHelpers, moodHelpers, authHelpers, exerciseHelpers } from '@/lib/supabase-helpers';
 import { supabase } from '@/lib/database';
 import SymptomForm from '@/components/forms/SymptomForm';
@@ -56,7 +55,6 @@ import ExerciseTracker from '@/components/forms/ExerciseTracker'
 import OngoingExercises from '@/components/OngoingExercises';
 import ExportModal from '@/components/ExportModal';
 import { useTheme } from '../lib/theme';
-import type { DashboardData } from '@/types';
 
 export default function Dashboard() {
   // Utility function for time formatting
@@ -77,7 +75,6 @@ export default function Dashboard() {
     return date.toLocaleDateString();
   };
 
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showSymptomForm, setShowSymptomForm] = useState(false);
   const [showMedicationForm, setShowMedicationForm] = useState(false);
@@ -346,10 +343,6 @@ export default function Dashboard() {
         healthStats
       });
 
-      // Also load legacy dashboard data
-      const legacyData = await getDashboardData();
-      setDashboardData(legacyData);
-      
       // Load recent updates for notifications
       await loadRecentUpdates();
       
