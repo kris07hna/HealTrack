@@ -55,7 +55,6 @@ import MoodTracker from '@/components/forms/MoodTracker';
 import ExerciseTracker from '@/components/forms/ExerciseTracker'
 import OngoingExercises from '@/components/OngoingExercises';
 import ExportModal from '@/components/ExportModal';
-import LottieAnimation from '@/components/animations/LottieAnimation';
 import { useTheme } from '../lib/theme';
 import type { DashboardData } from '@/types';
 
@@ -638,13 +637,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Lottie Background */}
+      {/* Simple Background */}
       <div className="fixed inset-0 z-0">
-        <LottieAnimation 
-          src="https://lottie.host/embed/5fd227ec-cb57-4965-84cd-498b02f9a2ba/EHJZ3mJ90R.lottie"
-          className="w-full h-full"
-          style={{ opacity: 0.15 }}
-        />
+        <div className="w-full h-full bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 opacity-60" />
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-black/80" />
         
