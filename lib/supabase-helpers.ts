@@ -9,6 +9,7 @@ type MoodEntry = Database['public']['Tables']['mood_entries']['Row']
 type MeditationSession = Database['public']['Tables']['meditation_sessions']['Row']
 type HealthInsight = Database['public']['Tables']['health_insights']['Row']
 type Medication = Database['public']['Tables']['medications']['Row']
+type Exercise = Database['public']['Tables']['exercises']['Row']
 
 // Auth helpers
 export const authHelpers = {
@@ -697,6 +698,229 @@ export const healthInsightsHelpers = {
   }
 }
 
+// Exercise helpers
+export const exerciseHelpers = {
+  // Get user exercises with pagination
+  getExercises: async (userId: string, page = 1, limit = 20) => {
+    const offset = (page - 1) * limit
+    
+    const { data, error, count } = await supabase
+      .from('exercises')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+    
+    if (error) throw error
+    
+    return {
+      exercises: data,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        pages: Math.ceil((count || 0) / limit)
+      }
+    }
+  },
+
+  // Add new exercise
+  addExercise: async (exercise: Omit<Exercise, 'id' | 'created_at'>) => {
+    console.log('💪 Adding exercise to Supabase:', exercise);
+    
+    const { data, error } = await supabase
+      .from('exercises')
+      .insert([exercise])
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Failed to add exercise:', error);
+      throw error;
+    }
+    
+    console.log('✅ Exercise added successfully:', data);
+    return data
+  },
+
+  // Start an ongoing exercise
+  startExercise: async (exercise: Omit<Exercise, 'id' | 'created_at' | 'completed_at'>) => {
+    console.log('🏃 Starting exercise session:', exercise);
+    
+    const exerciseData = {
+      ...exercise,
+      is_ongoing: true,
+      started_at: new Date().toISOString(),
+      completed_at: null
+    };
+
+    const { data, error } = await supabase
+      .from('exercises')
+      .insert([exerciseData])
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Failed to start exercise:', error);
+      throw error;
+    }
+    
+    console.log('✅ Exercise started successfully:', data);
+    return data
+  },
+
+  // Complete an ongoing exercise
+  completeExercise: async (exerciseId: string, updates?: Partial<Exercise>) => {
+    console.log('🏁 Completing exercise:', exerciseId);
+    
+    const updateData = {
+      ...updates,
+      is_ongoing: false,
+      completed_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('exercises')
+      .update(updateData)
+      .eq('id', exerciseId)
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Failed to complete exercise:', error);
+      throw error;
+    }
+    
+    console.log('✅ Exercise completed successfully:', data);
+    return data
+  },
+
+  // Get ongoing exercises
+  getOngoingExercises: async (userId: string) => {
+    const { data, error } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_ongoing', true)
+      .order('started_at', { ascending: false })
+    
+    if (error) {
+      console.error('❌ Failed to get ongoing exercises:', error);
+      throw error;
+    }
+    
+    return data
+  },
+
+  // Update exercise
+  updateExercise: async (id: string, updates: Partial<Exercise>) => {
+    const { data, error } = await supabase
+      .from('exercises')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  // Delete exercise
+  deleteExercise: async (id: string) => {
+    const { error } = await supabase
+      .from('exercises')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+  },
+
+  // Get exercise analytics
+  getExerciseAnalytics: async (userId: string, days = 30) => {
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - days)
+    
+    const { data, error } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_ongoing', false) // Only completed exercises
+      .gte('created_at', startDate.toISOString())
+    
+    if (error) throw error
+    
+    const totalExercises = data.length
+    const totalDuration = data.reduce((sum, e) => sum + e.duration_minutes, 0)
+    const totalCalories = data.reduce((sum, e) => sum + e.calories_burned, 0)
+    const avgIntensity = totalExercises > 0 
+      ? (data.reduce((sum, e) => sum + e.intensity_level, 0) / totalExercises).toFixed(1)
+      : 0
+    
+    const exerciseTypeFrequency = data.reduce((acc, e) => {
+      acc[e.exercise_type] = (acc[e.exercise_type] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    
+    return {
+      totalExercises,
+      totalDuration,
+      totalCalories,
+      avgIntensity,
+      exerciseTypeFrequency,
+      data
+    }
+  },
+
+  // Get exercise history
+  getExerciseHistory: async (userId: string, limit = 50) => {
+    const { data, error } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) throw error
+    return data
+  },
+
+  // Get exercise trends (for graphs)
+  getExerciseTrends: async (userId: string, days = 30) => {
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - days)
+    
+    const { data, error } = await supabase
+      .from('exercises')
+      .select('exercise_type, duration_minutes, intensity_level, calories_burned, created_at')
+      .eq('user_id', userId)
+      .eq('is_ongoing', false)
+      .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: true })
+    
+    if (error) throw error
+    
+    // Group by date for trend analysis
+    const dailyExercises = data.reduce((acc: Record<string, any[]>, exercise) => {
+      const date = exercise.created_at.split('T')[0]
+      if (!acc[date]) acc[date] = []
+      acc[date].push(exercise)
+      return acc
+    }, {} as Record<string, any[]>)
+    
+    // Calculate daily stats
+    const trends = Object.entries(dailyExercises).map(([date, exercises]) => ({
+      date,
+      totalDuration: exercises.reduce((sum, e) => sum + e.duration_minutes, 0),
+      totalCalories: exercises.reduce((sum, e) => sum + e.calories_burned, 0),
+      avgIntensity: exercises.reduce((sum, e) => sum + e.intensity_level, 0) / exercises.length,
+      exerciseCount: exercises.length,
+      exercises
+    })).sort((a, b) => a.date.localeCompare(b.date))
+    
+    return trends
+  }
+}
+
 // Real-time subscriptions
 export const realtimeHelpers = {
   // Subscribe to user's health data changes
@@ -768,3 +992,6 @@ export const utils = {
     }
   }
 }
+
+// Export individual helper functions for convenience
+export const updateProfile = profileHelpers.upsertProfile;

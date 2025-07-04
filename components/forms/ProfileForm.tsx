@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaTimes, 
@@ -12,79 +12,110 @@ import {
   FaWeight,
   FaRuler,
   FaAllergies,
-  FaMedkit
+  FaMedkit,
+  FaEnvelope,
+  FaUserMd
 } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth';
 import { useNotifications } from '@/lib/notifications';
+import { updateProfile } from '@/lib/supabase-helpers';
 
 interface ProfileFormProps {
   onClose: () => void;
+  onSubmit?: () => void;
+  profile?: any;
 }
 
 interface UserProfile {
-  name: string;
+  full_name: string;
   email: string;
   phone: string;
-  dateOfBirth: string;
+  date_of_birth: string;
   address: string;
-  height: string;
-  weight: string;
-  bloodType: string;
+  height_cm: number | null;
+  weight_kg: number | null;
+  blood_type: string;
   allergies: string;
-  emergencyContact: string;
-  medications: string;
-  avatar?: string;
+  emergency_contact: string;
+  medical_conditions: string;
 }
 
-export default function ProfileForm({ onClose }: ProfileFormProps) {
+export default function ProfileForm({ onClose, onSubmit, profile: initialProfile }: ProfileFormProps) {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
   
   const [profile, setProfile] = useState<UserProfile>({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: '',
-    dateOfBirth: '',
-    address: '',
-    height: '',
-    weight: '',
-    bloodType: '',
-    allergies: '',
-    emergencyContact: '',
-    medications: '',
+    full_name: initialProfile?.full_name || user?.name || '',
+    email: initialProfile?.email || user?.email || '',
+    phone: initialProfile?.phone || '',
+    date_of_birth: initialProfile?.date_of_birth || '',
+    address: initialProfile?.address || '',
+    height_cm: initialProfile?.height_cm || null,
+    weight_kg: initialProfile?.weight_kg || null,
+    blood_type: initialProfile?.blood_type || '',
+    allergies: Array.isArray(initialProfile?.allergies) ? initialProfile.allergies.join(', ') : (initialProfile?.allergies || ''),
+    emergency_contact: initialProfile?.emergency_contact_name || initialProfile?.emergency_contact || '',
+    medical_conditions: Array.isArray(initialProfile?.medical_conditions) ? initialProfile.medical_conditions.join(', ') : (initialProfile?.medical_conditions || ''),
   });
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleInputChange = (field: keyof UserProfile, value: string) => {
+  const handleInputChange = (field: keyof UserProfile, value: string | number | null) => {
     setProfile(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+  const handleSave = async () => {
+    if (!user?.id) {
+      console.error('No user ID available');
+      return;
     }
-  };
 
-  const handleSave = () => {
-    // Save profile data (you can implement actual save logic here)
-    localStorage.setItem('healtrack-profile', JSON.stringify(profile));
-    
-    addNotification({
-      type: 'success',
-      title: 'Profile Updated',
-      message: 'Your profile has been successfully saved.',
-    });
-    
-    setIsEditing(false);
+    setIsLoading(true);
+    try {
+      console.log('Saving profile data:', profile);
+      
+      // Convert string fields to arrays for database and map to correct schema
+      const databaseProfile = {
+        id: user.id, // The primary key for profiles table
+        email: profile.email,
+        full_name: profile.full_name,
+        phone: profile.phone,
+        date_of_birth: profile.date_of_birth || null,
+        height_cm: profile.height_cm,
+        weight_kg: profile.weight_kg,
+        blood_type: profile.blood_type || null,
+        medical_conditions: profile.medical_conditions ? profile.medical_conditions.split(',').map(s => s.trim()).filter(s => s.length > 0) : [],
+        allergies: profile.allergies ? profile.allergies.split(',').map(s => s.trim()).filter(s => s.length > 0) : [],
+        emergency_contact_name: profile.emergency_contact || null,
+        emergency_contact_phone: null, // You might want to add a separate field for this
+        current_medications: [], // Add if needed
+        activity_level: null // Add if needed
+      };
+      
+      console.log('Database profile:', databaseProfile);
+      
+      const result = await updateProfile(databaseProfile);
+      console.log('Profile update result:', result);
+      
+      addNotification({
+        type: 'success',
+        title: 'Profile Updated',
+        message: 'Your profile has been successfully updated!'
+      });
+      
+      onSubmit?.();
+      onClose(); // Close the form after successful save
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      addNotification({
+        type: 'error',
+        title: 'Update Failed',
+        message: `Failed to update profile: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+      // Don't close the form on error so user can retry
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -95,7 +126,7 @@ export default function ProfileForm({ onClose }: ProfileFormProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm"
           onClick={onClose}
         />
         
@@ -105,48 +136,35 @@ export default function ProfileForm({ onClose }: ProfileFormProps) {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-4xl glass-card bg-white/90 dark:bg-gray-900/90 border border-white/30 dark:border-gray-700/30 rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-4xl bg-black/40 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto"
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl flex items-center justify-center">
                   <FaUser className="text-white text-xl" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {isEditing ? 'Edit Profile' : 'My Profile'}
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">Manage your personal health information</p>
+                  <h2 className="text-2xl font-bold text-white">My Profile</h2>
+                  <p className="text-gray-400">Manage your personal health information</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                {!isEditing ? (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsEditing(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all"
-                  >
-                    <FaEdit className="inline mr-2" />
-                    Edit Profile
-                  </motion.button>
-                ) : (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleSave}
-                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all"
-                  >
-                    <FaSave className="inline mr-2" />
-                    Save Changes
-                  </motion.button>
-                )}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleSave}
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                >
+                  <FaSave className="inline mr-2" />
+                  {isLoading ? 'Saving...' : 'Save Changes'}
+                </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={onClose}
-                  className="p-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                  className="p-3 text-gray-400 hover:text-white rounded-2xl hover:bg-white/10 transition-all"
                 >
                   <FaTimes className="h-6 w-6" />
                 </motion.button>
@@ -156,143 +174,135 @@ export default function ProfileForm({ onClose }: ProfileFormProps) {
             {/* Avatar Section */}
             <div className="mb-8 text-center">
               <div className="relative inline-block">
-                <div className="w-32 h-32 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <FaUser className="text-white text-4xl" />
-                  )}
+                <div className="w-32 h-32 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                  <FaUser className="text-white text-4xl" />
                 </div>
-                {isEditing && (
-                  <label className="absolute bottom-2 right-2 w-10 h-10 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:shadow-xl transition-all">
-                    <FaCamera className="text-gray-600 dark:text-gray-300" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      className="hidden"
-                    />
-                  </label>
-                )}
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{profile.name}</h3>
-              <p className="text-gray-600 dark:text-gray-400">{profile.email}</p>
+              <h3 className="text-xl font-bold text-white">{profile.full_name}</h3>
+              <p className="text-gray-400">{profile.email}</p>
             </div>
 
             {/* Profile Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Personal Information */}
-              <div className="glass-card bg-white/60 dark:bg-gray-800/60 p-6 rounded-2xl">
-                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
-                  <FaUser className="mr-2 text-indigo-600" />
+              <div className="bg-black/20 backdrop-blur-md border border-gray-800/50 p-6 rounded-2xl">
+                <h4 className="text-lg font-bold text-white mb-6 flex items-center">
+                  <FaUser className="mr-2 text-cyan-400" />
                   Personal Information
                 </h4>
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                      <FaUser className="mr-2 text-cyan-400" />
                       Full Name
                     </label>
                     <input
                       type="text"
-                      value={profile.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      disabled={!isEditing}
-                      className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                      value={profile.full_name}
+                      onChange={(e) => handleInputChange('full_name', e.target.value)}
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                      <FaBirthdayCake className="mr-2 text-pink-500" />
+                    <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                      <FaEnvelope className="mr-2 text-cyan-400" />
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={profile.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                      <FaBirthdayCake className="mr-2 text-pink-400" />
                       Date of Birth
                     </label>
                     <input
                       type="date"
-                      value={profile.dateOfBirth}
-                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                      disabled={!isEditing}
-                      className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                      value={profile.date_of_birth}
+                      onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                      <FaPhone className="mr-2 text-green-500" />
+                    <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                      <FaPhone className="mr-2 text-green-400" />
                       Phone Number
                     </label>
                     <input
                       type="tel"
                       value={profile.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
-                      disabled={!isEditing}
-                      className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                      <FaMapMarkerAlt className="mr-2 text-red-500" />
+                    <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                      <FaMapMarkerAlt className="mr-2 text-red-400" />
                       Address
                     </label>
                     <textarea
                       value={profile.address}
                       onChange={(e) => handleInputChange('address', e.target.value)}
-                      disabled={!isEditing}
                       rows={3}
-                      className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600 resize-none"
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors resize-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Health Information */}
-              <div className="glass-card bg-white/60 dark:bg-gray-800/60 p-6 rounded-2xl">
-                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
-                  <FaMedkit className="mr-2 text-red-600" />
+              <div className="bg-black/20 backdrop-blur-md border border-gray-800/50 p-6 rounded-2xl">
+                <h4 className="text-lg font-bold text-white mb-6 flex items-center">
+                  <FaMedkit className="mr-2 text-red-400" />
                   Health Information
                 </h4>
                 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                        <FaRuler className="mr-1 text-blue-500" />
+                      <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                        <FaRuler className="mr-1 text-blue-400" />
                         Height (cm)
                       </label>
                       <input
                         type="number"
-                        value={profile.height}
-                        onChange={(e) => handleInputChange('height', e.target.value)}
-                        disabled={!isEditing}
-                        className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                        value={profile.height_cm || ''}
+                        onChange={(e) => handleInputChange('height_cm', e.target.value ? parseInt(e.target.value) : null)}
+                        className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                        <FaWeight className="mr-1 text-purple-500" />
+                      <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                        <FaWeight className="mr-1 text-purple-400" />
                         Weight (kg)
                       </label>
                       <input
                         type="number"
-                        value={profile.weight}
-                        onChange={(e) => handleInputChange('weight', e.target.value)}
-                        disabled={!isEditing}
-                        className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                        value={profile.weight_kg || ''}
+                        onChange={(e) => handleInputChange('weight_kg', e.target.value ? parseInt(e.target.value) : null)}
+                        className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors"
                       />
                     </div>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="text-sm font-semibold text-gray-300 mb-2">
                       Blood Type
                     </label>
                     <select
-                      value={profile.bloodType}
-                      onChange={(e) => handleInputChange('bloodType', e.target.value)}
-                      disabled={!isEditing}
-                      className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                      value={profile.blood_type}
+                      onChange={(e) => handleInputChange('blood_type', e.target.value)}
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-cyan-500 focus:outline-none transition-colors"
                     >
                       <option value="">Select Blood Type</option>
                       <option value="A+">A+</option>
@@ -307,31 +317,43 @@ export default function ProfileForm({ onClose }: ProfileFormProps) {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                      <FaAllergies className="mr-2 text-yellow-500" />
+                    <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                      <FaAllergies className="mr-2 text-yellow-400" />
                       Allergies
                     </label>
                     <textarea
                       value={profile.allergies}
                       onChange={(e) => handleInputChange('allergies', e.target.value)}
-                      disabled={!isEditing}
-                      rows={3}
+                      rows={2}
                       placeholder="List any known allergies..."
-                      className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600 resize-none"
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors resize-none"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="text-sm font-semibold text-gray-300 mb-2">
                       Emergency Contact
                     </label>
                     <input
                       type="text"
-                      value={profile.emergencyContact}
-                      onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
-                      disabled={!isEditing}
+                      value={profile.emergency_contact}
+                      onChange={(e) => handleInputChange('emergency_contact', e.target.value)}
                       placeholder="Name and phone number"
-                      className="form-input-modern w-full disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                      <FaUserMd className="mr-2 text-indigo-400" />
+                      Medical Conditions
+                    </label>
+                    <textarea
+                      value={profile.medical_conditions}
+                      onChange={(e) => handleInputChange('medical_conditions', e.target.value)}
+                      rows={2}
+                      placeholder="List any medical conditions..."
+                      className="w-full bg-black/30 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:outline-none transition-colors resize-none"
                     />
                   </div>
                 </div>

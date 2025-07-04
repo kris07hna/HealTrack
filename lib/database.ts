@@ -6,17 +6,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables:', {
-    url: !!supabaseUrl,
-    key: !!supabaseAnonKey
-  });
+  console.error('Missing Supabase environment variables');
   throw new Error('Missing Supabase environment variables')
 }
-
-console.log('Supabase configuration:', {
-  url: supabaseUrl,
-  keyLength: supabaseAnonKey.length
-});
 
 // Client-side Supabase client (for browser)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -26,17 +18,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true
   }
 })
-
-// Test connection on initialization
-supabase.from('profiles').select('count').limit(1).then(
-  ({ data, error }) => {
-    if (error) {
-      console.error('Supabase connection test failed:', error);
-    } else {
-      console.log('Supabase connection test successful');
-    }
-  }
-);
 
 // Database types for TypeScript
 export type Database = {
@@ -296,6 +277,47 @@ export type Database = {
           description?: string
           priority?: string
           is_read?: boolean
+          created_at?: string
+        }
+      }
+      exercises: {
+        Row: {
+          id: string
+          user_id: string
+          exercise_type: string
+          duration_minutes: number
+          intensity_level: number
+          calories_burned: number
+          notes: string | null
+          is_ongoing: boolean
+          started_at: string | null
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          exercise_type: string
+          duration_minutes: number
+          intensity_level: number
+          calories_burned: number
+          notes?: string | null
+          is_ongoing?: boolean
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          exercise_type?: string
+          duration_minutes?: number
+          intensity_level?: number
+          calories_burned?: number
+          notes?: string | null
+          is_ongoing?: boolean
+          started_at?: string | null
+          completed_at?: string | null
           created_at?: string
         }
       }

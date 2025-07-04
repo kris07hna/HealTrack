@@ -1,40 +1,59 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { FaHeartbeat, FaUserMd, FaChartLine, FaMobile, FaPills, FaRocket, FaShieldAlt, FaStar } from 'react-icons/fa';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { FaHeartbeat, FaUserMd, FaChartLine, FaMobile, FaPills, FaRocket, FaShieldAlt, FaStar, FaPhone, FaEnvelope, FaMapMarkerAlt, FaBars, FaTimes, FaLinkedin, FaGithub, FaUser, FaCode, FaExternalLinkAlt } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth';
 import LoginForm from '@/components/forms/LoginForm';
 import RegisterForm from '@/components/forms/RegisterForm';
-import LottieAnimation from '@/components/animations/LottieAnimation';
 
 export default function Home() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ container: containerRef });
 
   useEffect(() => {
-    // Show splash screen for 3 seconds
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    // Redirect to dashboard if already authenticated
-    console.log('Index page - Auth state:', { isAuthenticated, isLoading, user: isAuthenticated });
     if (isAuthenticated && !isLoading) {
-      console.log('Redirecting to dashboard...');
       router.push('/dashboard');
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (showSplash) {
-    return <SplashScreen />;
-  }
+  useEffect(() => {
+    const handleScroll = () => {
+      if (containerRef.current) {
+        const scrollTop = containerRef.current.scrollTop;
+        const scrollHeight = containerRef.current.scrollHeight - containerRef.current.clientHeight;
+        const scrollPercent = scrollTop / scrollHeight;
+        
+        if (scrollPercent < 0.25) {
+          setCurrentPage(0);
+        } else if (scrollPercent < 0.5) {
+          setCurrentPage(1);
+        } else if (scrollPercent < 0.75) {
+          setCurrentPage(2);
+        } else {
+          setCurrentPage(3);
+        }
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  const scrollToPage = (pageIndex: number) => {
+    if (containerRef.current) {
+      const targetScroll = (pageIndex / 4) * (containerRef.current.scrollHeight - containerRef.current.clientHeight);
+      containerRef.current.scrollTo({ top: targetScroll, behavior: 'smooth' });
+    }
+  };
 
   if (showLogin) {
     return (
@@ -60,815 +79,843 @@ export default function Home() {
     );
   }
 
-  return <LandingPage onLogin={() => setShowLogin(true)} onRegister={() => setShowRegister(true)} />;
-}
-
-function SplashScreen() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 flex items-center justify-center relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-300/10 rounded-full blur-3xl animate-float" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-blue-300/10 rounded-full blur-3xl animate-float" style={{animationDelay: '2s'}}></div>
+    <div className="relative w-full h-screen overflow-hidden bg-black">
+      {/* Glassmorphism Header */}
+      <Header 
+        currentPage={currentPage}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        onLogin={() => setShowLogin(true)}
+        scrollToPage={scrollToPage}
+      />
+
+      {/* Main Content Container */}
+      <div 
+        ref={containerRef}
+        className="h-full overflow-y-auto overflow-x-hidden scroll-smooth"
+        style={{ scrollSnapType: 'y mandatory' }}
+      >
+        {/* Page 1: Hero with Spline Animation */}
+        <HeroPage />
+        
+        {/* Page 2: Features with Dark Theme */}
+        <FeaturesPage />
+        
+        {/* Page 3: Contact Section */}
+        <ContactPage />
+        
+        {/* Page 4: Call to Action */}
+        <CTAPage onLogin={() => setShowLogin(true)} onRegister={() => setShowRegister(true)} />
       </div>
 
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 1, ease: "easeOut" }}
-        className="text-center relative z-10"
-      >
-        {/* Logo container with Lottie animation */}
-        <motion.div
-          animate={{ 
-            scale: [1, 1.05, 1],
-            rotate: [0, 2, -2, 0]
-          }}
-          transition={{ 
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="mb-8 relative"
-        >
-          <div className="w-40 h-40 mx-auto relative">
-            {/* Lottie Animation as background */}
-            <div className="absolute inset-0 w-full h-full">
-              <LottieAnimation 
-                src="https://lottie.host/embed/4e9ae918-b1d2-45a1-8562-610c54a04c36/taK6Aj7ddl.lottie"
-                className="w-full h-full opacity-90"
-              />
-            </div>
-            
-            {/* Glass overlay with icon */}
-            <div className="absolute inset-4 bg-white/20 backdrop-blur-lg rounded-3xl flex items-center justify-center border border-white/20 shadow-2xl">
-              <FaHeartbeat className="text-4xl text-white drop-shadow-lg" />
-            </div>
-          </div>
-          
-          {/* Enhanced pulse rings */}
-          <div className="absolute inset-0 w-40 h-40 mx-auto rounded-full bg-gradient-to-r from-white/10 to-purple-300/10 animate-ping"></div>
-          <div className="absolute inset-0 w-40 h-40 mx-auto rounded-full bg-gradient-to-r from-blue-300/10 to-white/5 animate-ping" style={{animationDelay: '1s'}}></div>
-        </motion.div>
-        
-        <motion.h1
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-6xl font-bold text-white mb-4 font-display"
-        >
-          HealTrack
-        </motion.h1>
-        
-        <motion.p
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
-          className="text-xl text-white/90 mb-8 font-medium"
-        >
-          Your Personal Health Companion
-        </motion.p>
+      {/* Footer */}
+      <Footer currentPage={currentPage} scrollToPage={scrollToPage} />
 
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 1.2, duration: 0.5 }}
-          className="flex justify-center"
-        >
-          <div className="flex space-x-2">
-            <div className="w-3 h-3 bg-gradient-to-r from-white/60 to-purple-300/60 rounded-full animate-bounce"></div>
-            <div className="w-3 h-3 bg-gradient-to-r from-purple-300/60 to-blue-300/60 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-            <div className="w-3 h-3 bg-gradient-to-r from-blue-300/60 to-white/60 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-          </div>
-        </motion.div>
-      </motion.div>
+      {/* Page Navigation Indicator */}
+      <PageIndicator currentPage={currentPage} scrollToPage={scrollToPage} />
     </div>
   );
 }
 
-interface LandingPageProps {
+// Header Component with Glassmorphism
+function Header({ currentPage, mobileMenuOpen, setMobileMenuOpen, onLogin, scrollToPage }: {
+  currentPage: number;
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
   onLogin: () => void;
-  onRegister: () => void;
+  scrollToPage: (page: number) => void;
+}) {
+  return (
+    <motion.header 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-2xl bg-black/20 border-b border-white/10"
+    >
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <motion.div 
+            className="flex items-center space-x-3 cursor-pointer"
+            onClick={() => scrollToPage(0)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <motion.div 
+              className="w-12 h-12 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center"
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            >
+              <FaHeartbeat className="text-2xl text-white" />
+            </motion.div>
+            <motion.h1 
+              className="text-2xl font-black bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent"
+              animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+              transition={{ duration: 3, repeat: Infinity }}
+              style={{ backgroundSize: "200% 200%" }}
+            >
+              HealTrack
+            </motion.h1>
+          </motion.div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            <motion.button
+              onClick={() => scrollToPage(0)}
+              className={`text-sm font-medium transition-all duration-300 ${currentPage === 0 ? 'text-cyan-400' : 'text-white/80 hover:text-white'}`}
+              whileHover={{ scale: 1.1 }}
+            >
+              Home
+            </motion.button>
+            <motion.button
+              onClick={() => scrollToPage(1)}
+              className={`text-sm font-medium transition-all duration-300 ${currentPage === 1 ? 'text-cyan-400' : 'text-white/80 hover:text-white'}`}
+              whileHover={{ scale: 1.1 }}
+            >
+              Features
+            </motion.button>
+            <motion.button
+              onClick={() => scrollToPage(2)}
+              className={`text-sm font-medium transition-all duration-300 ${currentPage === 2 ? 'text-cyan-400' : 'text-white/80 hover:text-white'}`}
+              whileHover={{ scale: 1.1 }}
+            >
+              Contact
+            </motion.button>
+          </nav>
+
+          {/* Auth Buttons */}
+          <div className="hidden md:flex items-center space-x-4">
+            <motion.button
+              onClick={onLogin}
+              className="px-6 py-2 text-sm font-medium text-white/90 hover:text-white transition-all duration-300 backdrop-blur-sm bg-white/5 rounded-full border border-white/10 hover:border-white/20"
+              whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Sign In
+            </motion.button>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <motion.button
+            className="md:hidden text-white p-2"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            {mobileMenuOpen ? <FaTimes /> : <FaBars />}
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden backdrop-blur-2xl bg-black/40 border-t border-white/10"
+          >
+            <div className="px-6 py-4 space-y-4">
+              <button onClick={() => { scrollToPage(0); setMobileMenuOpen(false); }} className="block w-full text-left text-white/80 hover:text-white">Home</button>
+              <button onClick={() => { scrollToPage(1); setMobileMenuOpen(false); }} className="block w-full text-left text-white/80 hover:text-white">Features</button>
+              <button onClick={() => { scrollToPage(2); setMobileMenuOpen(false); }} className="block w-full text-left text-white/80 hover:text-white">Contact</button>
+              <button onClick={onLogin} className="block w-full text-left text-cyan-400 font-medium">Sign In</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.header>
+  );
 }
 
-function LandingPage({ onLogin, onRegister }: LandingPageProps) {
+// Page 1: Hero with Simple Background
+function HeroPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="backdrop-blur-lg bg-white/80 shadow-soft border-b border-white/20 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center"
-            >
-              <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center mr-3 shadow-glow">
-                <FaHeartbeat className="text-xl text-white" />
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                HealTrack
-              </h1>
-            </motion.div>
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="space-x-4"
-            >
-              <button
-                onClick={onLogin}
-                className="btn btn-ghost text-gray-700 hover:text-indigo-600"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={onRegister}
-                className="btn btn-primary shadow-glow"
-              >
-                Get Started
-              </button>
-            </motion.div>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-20 pb-32">
-        {/* Background decorations */}
-        <div className="absolute inset-0 bg-gradient-mesh opacity-50"></div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="lg:grid lg:grid-cols-12 lg:gap-8 items-center">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="lg:col-span-6"
-            >
-              <div className="mb-6">
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 mb-6">
-                  🚀 Now in Beta - Free Forever
-                </span>
-              </div>
-              
-              <h2 className="text-5xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-                Take control of
-                <span className="block bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  your health
-                </span>
-              </h2>
-              
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Track symptoms, monitor progress, and gain insights into your health journey with our 
-                comprehensive, secure, and beautifully designed platform.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <button
-                  onClick={onRegister}
-                  className="btn btn-primary text-lg px-8 py-4 shadow-strong"
-                >
-                  Start Your Journey
-                  <span className="ml-2">→</span>
-                </button>
-                <button
-                  onClick={onLogin}
-                  className="btn btn-secondary text-lg px-8 py-4"
-                >
-                  Sign In
-                </button>
-              </div>
-
-              {/* Trust indicators */}
-              <div className="flex items-center space-x-6 text-sm text-gray-500">
-                <div className="flex items-center">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  Privacy First
-                </div>
-                <div className="flex items-center">
-                  <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
-                  100% Free
-                </div>
-                <div className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
-                  Open Source
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.8 }}
-              className="lg:col-span-6 mt-16 lg:mt-0"
-            >
-              <div className="relative">
-                {/* Main dashboard mockup with Lottie animation */}
-                <div className="glass-card p-8 transform rotate-3 hover:rotate-1 transition-transform duration-500 group">
-                  <div className="bg-gradient-primary h-48 rounded-xl mb-6 flex items-center justify-center relative overflow-hidden">
-                    {/* Lottie Animation Background */}
-                    <div className="absolute inset-0 opacity-30">
-                      <LottieAnimation 
-                        src="https://lottie.host/embed/7fdd340c-1adc-4ff9-97e5-5bf299cd585f/3ZSmf0p1uc.lottie"
-                        className="w-full h-full"
-                      />
-                    </div>
-                    
-                    {/* Overlay content */}
-                    <div className="relative z-10 text-center">
-                      <FaHeartbeat className="text-4xl text-white/80 mb-2" />
-                      <p className="text-white/70 text-sm font-medium">Health Dashboard</p>
-                    </div>
-                    
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
-                  </div>
-                  
-                  {/* Dashboard preview content */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full w-1/3 animate-pulse"></div>
-                      <div className="h-4 bg-gradient-to-r from-green-200 to-green-300 rounded-full w-16 animate-pulse" style={{animationDelay: '0.5s'}}></div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-3 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-full animate-pulse" style={{animationDelay: '1s'}}></div>
-                      <div className="h-3 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-2/3 animate-pulse" style={{animationDelay: '1.5s'}}></div>
-                      <div className="h-3 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-4/5 animate-pulse" style={{animationDelay: '2s'}}></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Enhanced floating elements with animations */}
-                <motion.div 
-                  animate={{ 
-                    y: [-10, 10, -10],
-                    rotate: [0, 5, 0, -5, 0]
-                  }}
-                  transition={{ 
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  className="absolute -top-4 -left-4 w-24 h-24 bg-gradient-to-r from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center shadow-glow border border-green-200"
-                >
-                  <FaChartLine className="text-3xl text-green-600" />
-                </motion.div>
-
-                <motion.div 
-                  animate={{ 
-                    y: [10, -10, 10],
-                    rotate: [0, -5, 0, 5, 0]
-                  }}
-                  transition={{ 
-                    duration: 5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 1
-                  }}
-                  className="absolute -bottom-4 -right-4 w-28 h-28 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-2xl flex items-center justify-center shadow-glow border border-blue-200"
-                >
-                  <FaPills className="text-3xl text-blue-600" />
-                </motion.div>
-
-                {/* Additional floating animations */}
-                <motion.div 
-                  animate={{ 
-                    x: [-5, 5, -5],
-                    y: [-3, 3, -3],
-                    scale: [1, 1.1, 1]
-                  }}
-                  transition={{ 
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.5
-                  }}
-                  className="absolute top-1/2 -left-8 w-16 h-16 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center shadow-medium border border-purple-200"
-                >
-                  <FaRocket className="text-xl text-purple-600" />
-                </motion.div>
-
-                <motion.div 
-                  animate={{ 
-                    x: [5, -5, 5],
-                    y: [3, -3, 3],
-                    scale: [1.1, 1, 1.1]
-                  }}
-                  transition={{ 
-                    duration: 3.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 1.5
-                  }}
-                  className="absolute top-1/4 -right-8 w-20 h-20 bg-gradient-to-r from-pink-100 to-rose-100 rounded-xl flex items-center justify-center shadow-medium border border-pink-200"
-                >
-                  <FaShieldAlt className="text-2xl text-pink-600" />
-                </motion.div>
-
-                {/* Sparkle effects */}
-                <motion.div 
-                  animate={{ 
-                    opacity: [0, 1, 0],
-                    scale: [0, 1, 0],
-                    rotate: [0, 180, 360]
-                  }}
-                  transition={{ 
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  className="absolute top-8 right-8 w-4 h-4 bg-yellow-400 rounded-full"
-                >
-                  <FaStar className="text-yellow-400 text-xs" />
-                </motion.div>
-
-                <motion.div 
-                  animate={{ 
-                    opacity: [0, 1, 0],
-                    scale: [0, 1, 0],
-                    rotate: [0, -180, -360]
-                  }}
-                  transition={{ 
-                    duration: 2.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 1
-                  }}
-                  className="absolute bottom-8 left-8 w-3 h-3 bg-cyan-400 rounded-full"
-                >
-                  <FaStar className="text-cyan-400 text-xs" />
-                </motion.div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-24 bg-white relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50"></div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-20"
-          >
-            <span className="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-4 block">
-              FEATURES
-            </span>
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-              Everything you need to manage your health
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Our comprehensive platform provides all the tools you need to track, analyze, and improve your health journey.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: FaUserMd,
-                title: "Smart Symptom Tracking",
-                description: "Log symptoms with AI-powered suggestions, severity ratings, and pattern recognition.",
-                color: "from-blue-500 to-cyan-500",
-                bgColor: "from-blue-50 to-cyan-50",
-                delay: 0.1,
-                emoji: "🩺"
-              },
-              {
-                icon: FaChartLine,
-                title: "Visual Analytics",
-                description: "Beautiful charts and insights to understand your health trends and progress over time.",
-                color: "from-green-500 to-emerald-500",
-                bgColor: "from-green-50 to-emerald-50",
-                delay: 0.2,
-                emoji: "📊"
-              },
-              {
-                icon: FaMobile,
-                title: "Mobile Optimized",
-                description: "Responsive design that works perfectly on all devices, anywhere, anytime.",
-                color: "from-purple-500 to-violet-500",
-                bgColor: "from-purple-50 to-violet-50",
-                delay: 0.3,
-                emoji: "📱"
-              },
-              {
-                icon: FaHeartbeat,
-                title: "Privacy First",
-                description: "Your health data is encrypted and stored securely. You maintain full control.",
-                color: "from-pink-500 to-rose-500",
-                bgColor: "from-pink-50 to-rose-50",
-                delay: 0.4,
-                emoji: "🔒"
-              }
-            ].map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: feature.delay, duration: 0.6 }}
-                className="group relative"
-              >
-                <div className="card-hover text-center relative overflow-hidden">
-                  {/* Floating emoji */}
-                  <motion.div
-                    animate={{ 
-                      y: [-5, 5, -5],
-                      rotate: [0, 10, -10, 0]
-                    }}
-                    transition={{ 
-                      duration: 3 + index * 0.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: index * 0.2
-                    }}
-                    className="absolute -top-3 -right-3 text-2xl z-10 bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg border-2 border-gray-100"
-                  >
-                    {feature.emoji}
-                  </motion.div>
-
-                  {/* Background gradient on hover */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.bgColor} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl`}></div>
-                  
-                  {/* Content */}
-                  <div className="relative z-10">
-                    <motion.div 
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                      className={`w-16 h-16 mx-auto mb-6 bg-gradient-to-r ${feature.color} rounded-2xl flex items-center justify-center shadow-glow`}
-                    >
-                      <feature.icon className="text-2xl text-white" />
-                    </motion.div>
-                    
-                    <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-gray-800 transition-colors">
-                      {feature.title}
-                    </h3>
-                    
-                    <p className="text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors">
-                      {feature.description}
-                    </p>
-
-                    {/* Progress bar animation */}
-                    <motion.div 
-                      className="mt-6 h-1 bg-gray-200 rounded-full overflow-hidden"
-                      initial={{ width: 0 }}
-                      whileInView={{ width: "100%" }}
-                      transition={{ delay: feature.delay + 0.5, duration: 1 }}
-                    >
-                      <motion.div 
-                        className={`h-full bg-gradient-to-r ${feature.color}`}
-                        initial={{ width: 0 }}
-                        whileInView={{ width: "100%" }}
-                        transition={{ delay: feature.delay + 0.7, duration: 1.5, ease: "easeOut" }}
-                      />
-                    </motion.div>
-                  </div>
-
-                  {/* Sparkle effects */}
-                  <motion.div 
-                    animate={{ 
-                      opacity: [0, 1, 0],
-                      scale: [0, 1, 0],
-                      rotate: [0, 180, 360]
-                    }}
-                    transition={{ 
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: index * 0.5
-                    }}
-                    className="absolute top-4 left-4 w-2 h-2 bg-yellow-400 rounded-full"
-                  />
-                  
-                  <motion.div 
-                    animate={{ 
-                      opacity: [0, 1, 0],
-                      scale: [0, 1, 0],
-                      rotate: [0, -180, -360]
-                    }}
-                    transition={{ 
-                      duration: 2.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: index * 0.3 + 1
-                    }}
-                    className="absolute bottom-4 right-4 w-1.5 h-1.5 bg-cyan-400 rounded-full"
-                  />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Additional feature highlights */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-            className="mt-20 grid md:grid-cols-3 gap-8"
-          >
-            {[
-              { 
-                icon: "🔐", 
-                title: "Bank-level Security", 
-                desc: "256-bit encryption",
-                color: "from-red-100 to-pink-100",
-                iconBg: "from-red-500 to-pink-500"
-              },
-              { 
-                icon: "📱", 
-                title: "PWA Support", 
-                desc: "Install as native app",
-                color: "from-blue-100 to-cyan-100",
-                iconBg: "from-blue-500 to-cyan-500"
-              },
-              { 
-                icon: "📊", 
-                title: "Export Data", 
-                desc: "CSV & JSON formats",
-                color: "from-green-100 to-emerald-100",
-                iconBg: "from-green-500 to-emerald-500"
-              },
-            ].map((item, index) => (
-              <motion.div 
-                key={item.title} 
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                whileHover={{ 
-                  scale: 1.05,
-                  y: -5
-                }}
-                transition={{ 
-                  delay: index * 0.1,
-                  duration: 0.3,
-                  type: "spring",
-                  stiffness: 300
-                }}
-                className="group relative"
-              >
-                <div className={`text-center p-8 rounded-2xl bg-gradient-to-br ${item.color} hover:shadow-strong transition-all duration-500 border border-white/50 backdrop-blur-sm relative overflow-hidden`}>
-                  {/* Animated background pattern */}
-                  <motion.div 
-                    animate={{ 
-                      rotate: [0, 360],
-                      scale: [1, 1.2, 1]
-                    }}
-                    transition={{ 
-                      duration: 20,
-                      repeat: Infinity,
-                      ease: "linear"
-                    }}
-                    className="absolute inset-0 opacity-5"
-                  >
-                    <div className="w-full h-full bg-gradient-to-r from-white to-transparent transform rotate-45"></div>
-                  </motion.div>
-
-                  {/* Icon with gradient background */}
-                  <motion.div 
-                    whileHover={{ rotate: 360 }}
-                    transition={{ duration: 0.6 }}
-                    className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-r ${item.iconBg} rounded-2xl flex items-center justify-center shadow-lg relative z-10`}
-                  >
-                    <span className="text-2xl filter drop-shadow-sm">{item.icon}</span>
-                  </motion.div>
-
-                  <h4 className="font-bold text-gray-900 mb-2 text-lg relative z-10">{item.title}</h4>
-                  <p className="text-sm text-gray-700 relative z-10 font-medium">{item.desc}</p>
-
-                  {/* Floating particles */}
-                  <motion.div 
-                    animate={{ 
-                      y: [-10, 10, -10],
-                      opacity: [0.3, 0.7, 0.3]
-                    }}
-                    transition={{ 
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: index * 0.5
-                    }}
-                    className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full"
-                  />
-                  
-                  <motion.div 
-                    animate={{ 
-                      y: [10, -10, 10],
-                      opacity: [0.2, 0.6, 0.2]
-                    }}
-                    transition={{ 
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: index * 0.3 + 1
-                    }}
-                    className="absolute bottom-2 left-2 w-1.5 h-1.5 bg-white rounded-full"
-                  />
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600"></div>
-        <div className="absolute inset-0 bg-black/20"></div>
-        
-        {/* Enhanced animated background elements */}
+    <section className="relative h-screen flex items-center justify-center overflow-hidden" style={{ scrollSnapAlign: 'start' }}>
+      {/* Simple Gradient Background */}
+      <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        {/* Subtle animated elements */}
         <div className="absolute inset-0">
-          <motion.div 
-            animate={{ 
-              x: [-20, 20, -20],
-              y: [-10, 10, -10],
-              scale: [1, 1.1, 1]
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl"></div>
+        </div>
+      </div>
+
+      {/* Hero Content */}
+      <div className="relative z-10 text-center max-w-6xl mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.5 }}
+          className="mb-8"
+        >
+          <motion.h1 
+            className="text-7xl md:text-9xl font-black mb-6"
+            style={{
+              background: "linear-gradient(45deg, #00f5ff, #ff00f5, #f5ff00, #00f5ff)",
+              backgroundSize: "300% 300%",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
             }}
-            transition={{ 
-              duration: 8,
-              repeat: Infinity,
-              ease: "easeInOut"
+            animate={{
+              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
             }}
-            className="absolute top-1/4 left-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl"
-          />
-          
-          <motion.div 
-            animate={{ 
-              x: [20, -20, 20],
-              y: [10, -10, 10],
-              scale: [1.1, 1, 1.1]
-            }}
-            transition={{ 
-              duration: 10,
+            transition={{
+              duration: 4,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 1
             }}
-            className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-300/10 rounded-full blur-3xl"
+          >
+            HealTrack
+          </motion.h1>
+          
+          <motion.div
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 1, delay: 1.2 }}
+            className="h-2 w-64 mx-auto bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 rounded-full mb-8"
           />
+        </motion.div>
 
-          {/* Additional floating elements */}
-          <motion.div 
-            animate={{ 
-              rotate: [0, 360],
-              scale: [0.8, 1.2, 0.8]
-            }}
-            transition={{ 
-              duration: 12,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-            className="absolute top-1/3 right-1/3 w-32 h-32 bg-cyan-300/10 rounded-full blur-2xl"
-          />
+        <motion.p
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.5 }}
+          className="text-2xl md:text-3xl text-white/90 mb-12 font-light leading-relaxed"
+        >
+          The Future of{" "}
+          <motion.span
+            className="font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent"
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            AI-Powered
+          </motion.span>
+          {" "}Health Intelligence
+        </motion.p>
 
-          <motion.div 
-            animate={{ 
-              rotate: [360, 0],
-              scale: [1.2, 0.8, 1.2]
-            }}
-            transition={{ 
-              duration: 15,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-            className="absolute bottom-1/3 left-1/3 w-48 h-48 bg-pink-300/10 rounded-full blur-2xl"
-          />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 2 }}
+          className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+        >
+          <motion.button
+            className="group relative px-12 py-4 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-2xl text-white font-bold text-lg overflow-hidden"
+            whileHover={{ scale: 1.05, rotate: 1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              animate={{ x: [-100, 100] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            />
+            <span className="relative z-10">Experience the Future</span>
+          </motion.button>
+
+          <motion.div
+            className="flex items-center space-x-4 text-white/70"
+            animate={{ y: [0, -5, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+              <FaHeartbeat className="text-cyan-400" />
+            </div>
+            <span className="text-sm">Join 10,000+ Users</span>
+          </motion.div>
+        </motion.div>
+
+        {/* Simple Floating Elements */}
+        <div className="absolute top-20 left-20 w-16 h-16 bg-cyan-400/20 rounded-full"></div>
+        <div className="absolute bottom-20 right-20 w-20 h-20 bg-purple-400/20 rounded-full"></div>
+        <div className="absolute top-1/2 left-10 w-12 h-12 bg-pink-400/20 rounded-full"></div>
+      </div>
+
+      {/* Simple Scroll Indicator */}
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+        <div className="w-6 h-10 border-2 border-white/30 rounded-full p-2">
+          <div className="w-1 h-3 bg-gradient-to-b from-cyan-400 to-purple-400 rounded-full mx-auto"></div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8 relative z-10">
+// Page 2: Features with Dark Theme and Animations
+function FeaturesPage() {
+  const features = [
+    {
+      icon: FaUserMd,
+      title: "AI Health Assistant",
+      description: "Advanced AI algorithms analyze your health patterns and provide personalized insights for better wellness management.",
+      gradient: "from-blue-500 to-cyan-500",
+      delay: 0.2
+    },
+    {
+      icon: FaChartLine,
+      title: "Smart Analytics",
+      description: "Comprehensive health tracking with intelligent data visualization and predictive health modeling.",
+      gradient: "from-purple-500 to-pink-500",
+      delay: 0.4
+    },
+    {
+      icon: FaShieldAlt,
+      title: "Privacy First",
+      description: "Bank-level encryption with zero-knowledge architecture. Your health data remains completely private and secure.",
+      gradient: "from-green-500 to-emerald-500",
+      delay: 0.6
+    },
+    {
+      icon: FaMobile,
+      title: "Cross-Platform Sync",
+      description: "Seamlessly sync across all your devices with real-time updates and offline capabilities.",
+      gradient: "from-orange-500 to-red-500",
+      delay: 0.8
+    }
+  ];
+
+  return (
+    <section className="relative min-h-screen bg-black flex items-center py-20" style={{ scrollSnapAlign: 'start' }}>
+      {/* Simple Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-to-l from-pink-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-6">
+        {/* Section Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-20"
+        >
+          <motion.h2 
+            className="text-6xl md:text-7xl font-black mb-6 bg-gradient-to-r from-white via-cyan-400 to-purple-400 bg-clip-text text-transparent"
+            animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+            transition={{ duration: 5, repeat: Infinity }}
+            style={{ backgroundSize: "200% 200%" }}
+          >
+            Revolutionary Features
+          </motion.h2>
+          <motion.p 
+            className="text-xl text-white/70 max-w-3xl mx-auto leading-relaxed"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            Experience the next generation of health technology with features that adapt to your unique needs
+          </motion.p>
+        </motion.div>
+
+        {/* Features Grid */}
+        <div className="grid lg:grid-cols-2 gap-12">
+          {features.map((feature, index) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, x: index % 2 === 0 ? -100 : 100, rotateY: 30 }}
+              whileInView={{ opacity: 1, x: 0, rotateY: 0 }}
+              transition={{ delay: feature.delay, duration: 0.8, type: "spring" }}
+              className="group"
+            >
+              <div className="relative overflow-hidden rounded-3xl backdrop-blur-2xl bg-white/5 border border-white/10 p-8 h-full hover:bg-white/10 transition-all duration-500">
+                {/* Animated Border */}
+                <motion.div
+                  className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: `linear-gradient(45deg, transparent, rgba(0,255,255,0.2), transparent)`,
+                  }}
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                />
+
+                <div className="relative z-10">
+                  {/* Feature Icon */}
+                  <motion.div
+                    className={`w-20 h-20 mx-auto mb-6 bg-gradient-to-r ${feature.gradient} rounded-3xl flex items-center justify-center shadow-2xl`}
+                    initial={{ scale: 0, rotate: -180 }}
+                    whileInView={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: feature.delay + 0.2, duration: 0.8, type: "spring" }}
+                    whileHover={{ scale: 1.15, rotate: 10 }}
+                  >
+                    <feature.icon className="text-3xl text-white" />
+                  </motion.div>
+
+                  {/* Feature Title */}
+                  <motion.h3
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: feature.delay + 0.6, duration: 0.6 }}
+                    className="text-2xl font-bold text-white mb-4 text-center"
+                  >
+                    {feature.title}
+                  </motion.h3>
+
+                  {/* Feature Description */}
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: feature.delay + 0.8, duration: 0.6 }}
+                    className="text-white/70 leading-relaxed text-center"
+                  >
+                    {feature.description}
+                  </motion.p>
+
+                  {/* Animated Progress Bar */}
+                  <motion.div
+                    className="mt-6 h-1 bg-white/10 rounded-full overflow-hidden"
+                    initial={{ scaleX: 0 }}
+                    whileInView={{ scaleX: 1 }}
+                    transition={{ delay: feature.delay + 1, duration: 1 }}
+                  >
+                    <motion.div
+                      className={`h-full bg-gradient-to-r ${feature.gradient}`}
+                      initial={{ width: 0 }}
+                      whileInView={{ width: "100%" }}
+                      transition={{ delay: feature.delay + 1.2, duration: 1.5 }}
+                    />
+                  </motion.div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Page 3: Contact Section with Krishna's Details
+function ContactPage() {
+  const contactInfo = {
+    name: "Krishna R",
+    email: "krishedu07@gmail.com",
+    linkedin: "https://www.linkedin.com/in/krishnar1508/",
+    github: "https://github.com/kris07hna"
+  };
+
+  const socialLinks = [
+    {
+      icon: FaLinkedin,
+      label: "LinkedIn",
+      url: contactInfo.linkedin,
+      color: "from-blue-600 to-blue-400",
+      hoverColor: "hover:text-blue-400"
+    },
+    {
+      icon: FaGithub,
+      label: "GitHub", 
+      url: contactInfo.github,
+      color: "from-gray-800 to-gray-600",
+      hoverColor: "hover:text-gray-300"
+    },
+    {
+      icon: FaEnvelope,
+      label: "Email",
+      url: `mailto:${contactInfo.email}`,
+      color: "from-red-600 to-pink-500",
+      hoverColor: "hover:text-pink-400"
+    }
+  ];
+
+  return (
+    <section className="relative min-h-screen bg-gradient-to-br from-black via-slate-900/50 to-black flex items-center justify-center py-20" style={{ scrollSnapAlign: 'start' }}>
+      {/* Simple Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-gradient-to-l from-purple-500/10 to-pink-500/10 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+        {/* Section Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="mb-16"
+        >
+          <motion.h2 
+            className="text-5xl md:text-6xl font-black mb-6 bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent"
+            animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            style={{ backgroundSize: "200% 200%" }}
+          >
+            Get in Touch
+          </motion.h2>
+          <motion.p 
+            className="text-xl text-white/70 max-w-2xl mx-auto leading-relaxed"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            Let's connect and build something amazing together
+          </motion.p>
+        </motion.div>
+
+        {/* Contact Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4, duration: 0.8 }}
+          className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-8 md:p-12 mb-12 hover:bg-white/10 transition-all duration-500"
+        >
+          {/* Profile Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+            className="mb-10"
           >
-            <motion.h2 
-              className="text-4xl lg:text-5xl font-bold text-white mb-6"
-              animate={{ 
-                textShadow: [
-                  "0 0 10px rgba(255,255,255,0.5)",
-                  "0 0 20px rgba(255,255,255,0.8)",
-                  "0 0 10px rgba(255,255,255,0.5)"
-                ]
-              }}
-              transition={{ 
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              Ready to start your health journey?
-            </motion.h2>
-            
-            <p className="text-xl text-white/90 mb-8 leading-relaxed">
-              Join thousands of users who are taking control of their health with HealTrack. 
-              Start tracking today and discover insights about your wellness.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <motion.button
-                onClick={onRegister}
-                whileHover={{ 
-                  scale: 1.05,
-                  boxShadow: "0 20px 40px rgba(255,255,255,0.3)"
-                }}
-                whileTap={{ scale: 0.95 }}
-                className="btn bg-white text-indigo-600 hover:bg-gray-50 text-lg px-8 py-4 shadow-xl relative overflow-hidden group"
-              >
-                {/* Button shine effect */}
-                <motion.div 
-                  animate={{ x: [-100, 100] }}
-                  transition={{ 
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform skew-x-12 group-hover:via-white/40"
-                />
-                <span className="relative z-10">
-                  Get Started for Free
-                  <span className="ml-2">✨</span>
-                </span>
-              </motion.button>
-              
-              <motion.button
-                onClick={onLogin}
-                whileHover={{ 
-                  scale: 1.05,
-                  backgroundColor: "rgba(255,255,255,0.2)"
-                }}
-                whileTap={{ scale: 0.95 }}
-                className="btn bg-white/10 text-white border-white/20 hover:bg-white/20 text-lg px-8 py-4 backdrop-blur-sm"
-              >
-                Sign In
-              </motion.button>
-            </div>
-            
             <motion.div 
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 1 }}
-              className="flex items-center justify-center space-x-8 text-white/70 text-sm flex-wrap gap-4"
+              className="w-32 h-32 mx-auto mb-6 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 rounded-full flex items-center justify-center text-6xl text-white"
+              initial={{ scale: 0, rotate: -180 }}
+              whileInView={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.8, duration: 1, type: "spring", stiffness: 200 }}
+              whileHover={{ scale: 1.1, rotate: 5 }}
             >
-              {[
-                { icon: "💳", text: "No credit card required", color: "bg-green-400" },
-                { icon: "🆓", text: "Free forever", color: "bg-blue-400" },
-                { icon: "⚡", text: "Setup in 2 minutes", color: "bg-purple-400" }
-              ].map((item, index) => (
-                <motion.div 
-                  key={item.text}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 + index * 0.1, duration: 0.5 }}
-                  className="flex items-center"
-                >
-                  <motion.span 
-                    animate={{ 
-                      scale: [1, 1.2, 1],
-                      rotate: [0, 10, -10, 0]
-                    }}
-                    transition={{ 
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: index * 0.5
-                    }}
-                    className={`w-2 h-2 ${item.color} rounded-full mr-2`}
-                  />
-                  <span className="text-sm">{item.text}</span>
-                </motion.div>
-              ))}
+              <FaUser />
             </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-8 md:mb-0">
-              <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center mr-3">
-                <FaHeartbeat className="text-xl text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">HealTrack</h3>
-                <p className="text-gray-400 text-sm">Your health, your data, your control</p>
-              </div>
-            </div>
             
-            <div className="flex space-x-8 text-sm text-gray-400">
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-white transition-colors">Support</a>
+            <motion.h3
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 0.6 }}
+              className="text-3xl md:text-4xl font-bold text-white mb-2"
+            >
+              {contactInfo.name}
+            </motion.h3>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.2, duration: 0.6 }}
+              className="text-lg text-white/70 mb-6"
+            >
+              Full-Stack Developer & Health Tech Enthusiast
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, scaleX: 0 }}
+              whileInView={{ opacity: 1, scaleX: 1 }}
+              transition={{ delay: 1.4, duration: 1 }}
+              className="h-1 w-32 mx-auto bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 rounded-full"
+            />
+          </motion.div>
+
+          {/* Contact Methods */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.6, duration: 0.8 }}
+            className="grid md:grid-cols-3 gap-6"
+          >
+            {socialLinks.map((social, index) => (
+              <motion.a
+                key={social.label}
+                href={social.url}
+                target={social.label !== "Email" ? "_blank" : undefined}
+                rel={social.label !== "Email" ? "noopener noreferrer" : undefined}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.8 + index * 0.1, duration: 0.6 }}
+                className="group relative overflow-hidden rounded-2xl backdrop-blur-sm bg-white/5 border border-white/10 p-6 hover:bg-white/10 transition-all duration-300"
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {/* Animated Background */}
+                <motion.div
+                  className={`absolute inset-0 bg-gradient-to-r ${social.color} opacity-0 group-hover:opacity-20 transition-opacity duration-300`}
+                />
+                
+                <div className="relative z-10 text-center">
+                  <motion.div
+                    className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-white/10 to-white/5 rounded-xl flex items-center justify-center"
+                    whileHover={{ rotate: 10 }}
+                  >
+                    <social.icon className={`text-2xl text-white/80 group-hover:text-white transition-colors duration-300 ${social.hoverColor}`} />
+                  </motion.div>
+                  
+                  <h4 className="text-lg font-semibold text-white mb-2">
+                    {social.label}
+                  </h4>
+                  
+                  <p className="text-sm text-white/60 group-hover:text-white/80 transition-colors duration-300 flex items-center justify-center">
+                    {social.label === "Email" ? contactInfo.email : `@${social.url.split('/').pop()}`}
+                    <FaExternalLinkAlt className="ml-2 text-xs" />
+                  </p>
+                </div>
+                
+                {/* Hover Effect Border */}
+                <motion.div
+                  className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-white/20 transition-all duration-300"
+                  whileHover={{ 
+                    boxShadow: "0 0 30px rgba(255, 255, 255, 0.1)" 
+                  }}
+                />
+              </motion.a>
+            ))}
+          </motion.div>
+
+          {/* Additional Info */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ delay: 2.2, duration: 0.8 }}
+            className="mt-10 pt-8 border-t border-white/10"
+          >
+            <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-8 text-white/60">
+              <motion.div 
+                className="flex items-center"
+                whileHover={{ scale: 1.05 }}
+              >
+                <FaCode className="mr-2 text-cyan-400" />
+                <span>Open to collaborate</span>
+              </motion.div>
+              <motion.div 
+                className="flex items-center"
+                whileHover={{ scale: 1.05 }}
+              >
+                <FaHeartbeat className="mr-2 text-pink-400" />
+                <span>Health Tech Passionate</span>
+              </motion.div>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Call to Action */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2.4, duration: 0.8 }}
+          className="text-center"
+        >
+          <motion.p
+            className="text-lg text-white/70 mb-6"
+            animate={{ 
+              opacity: [0.7, 1, 0.7]
+            }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            Ready to transform healthcare with technology?
+          </motion.p>
+          
+          <motion.a
+            href={`mailto:${contactInfo.email}`}
+            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 rounded-2xl text-white font-semibold text-lg hover:shadow-2xl transition-all duration-300"
+            whileHover={{ scale: 1.05, rotate: 1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <FaEnvelope className="mr-3" />
+            Let's Talk
+            <motion.div
+              className="ml-3"
+              animate={{ x: [0, 5, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              →
+            </motion.div>
+          </motion.a>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// Page 4: Call to Action
+function CTAPage({ onLogin, onRegister }: { onLogin: () => void; onRegister: () => void }) {
+  return (
+    <section className="relative min-h-screen bg-gradient-to-br from-black via-purple-900/20 to-black flex items-center justify-center" style={{ scrollSnapAlign: 'start' }}>
+      {/* Simple Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-500/5 via-purple-500/5 to-pink-500/5"></div>
+      </div>
+
+      <div className="relative z-10 text-center max-w-4xl mx-auto px-6">
+        {/* Main CTA Content */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8 }}
+          className="mb-12"
+        >
+          <motion.h2 
+            className="text-5xl md:text-7xl font-black mb-8"
+            animate={{ 
+              backgroundImage: [
+                "linear-gradient(45deg, #00f5ff, #ff00f5)",
+                "linear-gradient(45deg, #ff00f5, #f5ff00)",
+                "linear-gradient(45deg, #f5ff00, #00f5ff)",
+                "linear-gradient(45deg, #00f5ff, #ff00f5)"
+              ]
+            }}
+            transition={{ duration: 4, repeat: Infinity }}
+            style={{
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Ready to Transform Your Health?
+          </motion.h2>
+          
+          <motion.p
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="text-xl text-white/80 mb-12 leading-relaxed"
+          >
+            Join thousands of users who have revolutionized their health journey with AI-powered insights
+          </motion.p>
+        </motion.div>
+
+        {/* CTA Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.8 }}
+          className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16"
+        >
+          <motion.button
+            onClick={onRegister}
+            className="group relative px-12 py-6 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-3xl text-white font-bold text-xl overflow-hidden"
+            whileHover={{ scale: 1.05, rotate: 2 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500"
+              initial={{ x: "-100%" }}
+              whileHover={{ x: "100%" }}
+              transition={{ duration: 0.6 }}
+            />
+            <span className="relative z-10 flex items-center">
+              Get Started Free
+              <motion.span
+                className="ml-3"
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                →
+              </motion.span>
+            </span>
+          </motion.button>
+
+          <motion.button
+            onClick={onLogin}
+            className="px-12 py-6 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-3xl text-white font-bold text-xl hover:bg-white/20 transition-all duration-300"
+            whileHover={{ scale: 1.05, borderColor: "rgba(255,255,255,0.5)" }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Sign In
+          </motion.button>
+        </motion.div>
+
+        {/* Stats/Social Proof */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ delay: 0.9, duration: 0.8 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto"
+        >
+          {[
+            { number: "10K+", label: "Active Users", icon: FaUserMd },
+            { number: "1M+", label: "Health Records", icon: FaChartLine },
+            { number: "99.9%", label: "Uptime", icon: FaShieldAlt }
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1 + index * 0.1, duration: 0.6 }}
+              className="text-center"
+            >
+              <motion.div
+                className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full flex items-center justify-center"
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+              >
+                <stat.icon className="text-2xl text-white" />
+              </motion.div>
+              <div className="text-3xl font-bold text-white mb-2">{stat.number}</div>
+              <div className="text-white/60">{stat.label}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// Footer Component
+function Footer({ currentPage, scrollToPage }: { currentPage: number; scrollToPage: (page: number) => void }) {
+  return (
+    <motion.footer 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-2xl bg-black/20 border-t border-white/10"
+    >
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          {/* Contact Info */}
+          <div className="hidden md:flex items-center space-x-6 text-sm text-white/60">
+            <div className="flex items-center">
+              <FaEnvelope className="mr-2" />
+              hello@healtrack.app
+            </div>
+            <div className="flex items-center">
+              <FaPhone className="mr-2" />
+              +1 (555) 123-4567
             </div>
           </div>
-          
-          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400 text-sm">
-            <p>&copy; 2025 HealTrack. Made with ❤️ for better health.</p>
+
+          {/* Page Navigation */}
+          <div className="flex items-center space-x-4">
+            {['Home', 'Features', 'Contact', 'Get Started'].map((page, index) => (
+              <motion.button
+                key={page}
+                onClick={() => scrollToPage(index)}
+                className={`px-4 py-2 text-sm rounded-full transition-all duration-300 ${
+                  currentPage === index 
+                    ? 'bg-white/20 text-white' 
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {page}
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Copyright */}
+          <div className="hidden md:block text-sm text-white/40">
+            © 2025 HealTrack. All rights reserved.
           </div>
         </div>
-      </footer>
+      </div>
+    </motion.footer>
+  );
+}
+
+// Page Indicator Component
+function PageIndicator({ currentPage, scrollToPage }: { currentPage: number; scrollToPage: (page: number) => void }) {
+  return (
+    <div className="fixed right-8 top-1/2 transform -translate-y-1/2 z-50 space-y-4">
+      {[0, 1, 2, 3].map((page) => (
+        <motion.button
+          key={page}
+          onClick={() => scrollToPage(page)}
+          className={`w-3 h-3 rounded-full border-2 transition-all duration-300 ${
+            currentPage === page 
+              ? 'bg-white border-white' 
+              : 'border-white/40 hover:border-white/60'
+          }`}
+          whileHover={{ scale: 1.2 }}
+          whileTap={{ scale: 0.8 }}
+        />
+      ))}
     </div>
   );
 }

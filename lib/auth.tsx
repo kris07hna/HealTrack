@@ -108,28 +108,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       
       if (session?.user) {
-        const authUser: AuthUser = {
-          id: session.user.id,
-          email: session.user.email!,
-          name: session.user.user_metadata?.full_name || session.user.email!.split('@')[0],
-          avatar: session.user.user_metadata?.avatar_url
-        };
+        // Check if user's email is confirmed before allowing authentication
+        if (session.user.email_confirmed_at || event === 'SIGNED_IN') {
+          const authUser: AuthUser = {
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.user_metadata?.full_name || session.user.email!.split('@')[0],
+            avatar: session.user.user_metadata?.avatar_url
+          };
 
-        console.log('Setting user from auth state change:', authUser);
-        
-        // If this is a sign-in event or first time user, create/check profile
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          console.log('Creating/checking profile for authenticated user');
-          await createUserProfile(session.user);
+          console.log('Setting authenticated user from auth state change:', authUser);
+          
+          // If this is a sign-in event or first time user, create/check profile
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            console.log('Creating/checking profile for authenticated user');
+            await createUserProfile(session.user);
+          }
+
+          setState({
+            isAuthenticated: true,
+            user: authUser,
+            supabaseUser: session.user,
+            token: session.access_token,
+            isLoading: false,
+          });
+        } else {
+          // User exists but email not confirmed
+          console.log('User email not confirmed yet, keeping user signed out');
+          setState({
+            isAuthenticated: false,
+            user: null,
+            supabaseUser: null,
+            token: null,
+            isLoading: false,
+          });
         }
-
-        setState({
-          isAuthenticated: true,
-          user: authUser,
-          supabaseUser: session.user,
-          token: session.access_token,
-          isLoading: false,
-        });
       } else {
         console.log('Clearing user from auth state change');
         setState({
@@ -216,18 +229,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Registration successful:', authData.user?.email);
       console.log('Registration data:', authData);
 
-      // Check if user needs email confirmation
-      if (authData.user && !authData.session) {
-        console.log('User needs email confirmation');
-        // User created but needs email confirmation
+      // Always assume email confirmation is required for security
+      // Even if Supabase is configured to auto-confirm, we'll show the confirmation message
+      if (authData.user) {
+        console.log('User registered, email confirmation required');
         setState(prev => ({ ...prev, isLoading: false }));
         return { success: true, needsConfirmation: true };
-      }
-
-      // If user is immediately authenticated (email confirmation disabled)
-      if (authData.user && authData.session) {
-        console.log('User immediately authenticated, creating profile...');
-        await createUserProfile(authData.user);
       }
       
       setState(prev => ({ ...prev, isLoading: false }));
