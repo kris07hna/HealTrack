@@ -136,7 +136,7 @@ export default function SymptomTracker() {
       
       setSymptomData({
         total: analytics.totalSymptoms,
-        averageSeverity: parseFloat(analytics.avgSeverity),
+        averageSeverity: typeof analytics.avgSeverity === 'number' ? analytics.avgSeverity : parseFloat(analytics.avgSeverity || '0'),
         entries: history
       })
 
