@@ -116,9 +116,10 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: RegisterFormP
     if (result.success) {
       if (result.needsConfirmation) {
         addNotification({
-          type: 'info',
+          type: 'email',
           title: 'Check Your Email! 📧',
-          message: `We sent a confirmation link to ${email}. Please check your email (including spam folder) and click the link to activate your account.`,
+          message: `We sent a confirmation link to ${email}. Please check your email (including spam folder) and click the link to activate your account before signing in.`,
+          duration: 10000, // Show longer for important message
         });
         console.log('Registration successful, email confirmation required');
       } else {
@@ -132,12 +133,13 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: RegisterFormP
       onClose();
     } else {
       console.error('Registration failed');
+      const errorMessage = result.error || 'Registration failed. Please check your information and try again.';
       addNotification({
         type: 'error',
         title: 'Registration Failed',
-        message: 'Registration failed. Please check your information and try again.',
+        message: errorMessage,
       });
-      setErrors({ general: 'Registration failed. Please try again.' });
+      setErrors({ general: errorMessage });
     }
   };
 

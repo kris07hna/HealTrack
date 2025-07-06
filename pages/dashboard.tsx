@@ -882,7 +882,9 @@ export default function Dashboard() {
                 >
                   <div className="text-right hidden md:block">
                     <p className="text-sm font-medium text-white">{user?.name || realTimeData.profile?.full_name || 'User'}</p>
-                    <p className="text-xs text-gray-400">{user?.email}</p>
+                    <p className="text-xs text-gray-400">
+                      {realTimeData.profile?.title || 'Health Tracker User'}
+                    </p>
                   </div>
                   
                   {/* Profile Button */}

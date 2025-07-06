@@ -14,7 +14,8 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const { login, isLoading } = useAuth();
+  const [showResendButton, setShowResendButton] = useState(false);
+  const { login, isLoading, resendConfirmation } = useAuth();
   const { addNotification } = useNotifications();
 
   const validateForm = () => {
@@ -51,9 +52,53 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
         title: 'Welcome back!',
         message: 'You have been successfully logged in.',
       });
+      setShowResendButton(false);
       onClose();
+    } else if (result.needsConfirmation) {
+      addNotification({
+        type: 'email',
+        title: 'Please Confirm Your Email 📧',
+        message: result.error || 'Please check your email and click the confirmation link before signing in.',
+        duration: 8000, // Show longer for important message
+      });
+      setErrors({ general: result.error || 'Please confirm your email before signing in.' });
+      setShowResendButton(true); // Show resend button
     } else {
-      setErrors({ general: 'Invalid email or password. Please try again.' });
+      addNotification({
+        type: 'error',
+        title: 'Sign In Failed',
+        message: result.error || 'Invalid email or password. Please try again.',
+      });
+      setErrors({ general: result.error || 'Invalid email or password. Please try again.' });
+      setShowResendButton(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      addNotification({
+        type: 'error',
+        title: 'Email Required',
+        message: 'Please enter your email address first.',
+      });
+      return;
+    }
+
+    const result = await resendConfirmation(email);
+    
+    if (result.success) {
+      addNotification({
+        type: 'success',
+        title: 'Confirmation Email Sent! 📧',
+        message: `We've sent a new confirmation link to ${email}. Please check your email and click the link.`,
+        duration: 8000,
+      });
+    } else {
+      addNotification({
+        type: 'error',
+        title: 'Failed to Send Email',
+        message: result.error || 'Failed to resend confirmation email. Please try again.',
+      });
     }
   };
 
@@ -168,9 +213,26 @@ export default function LoginForm({ onClose, onSwitchToRegister }: LoginFormProp
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm"
+                className="space-y-3"
               >
-                {errors.general}
+                <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                  {errors.general}
+                </div>
+                
+                {/* Resend Confirmation Button */}
+                {showResendButton && (
+                  <motion.button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    className="w-full py-2 bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 text-yellow-400 font-medium rounded-lg transition-all duration-200"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    📧 Resend Confirmation Email
+                  </motion.button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

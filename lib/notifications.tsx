@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
-export type NotificationType = 'success' | 'error' | 'info' | 'warning';
+export type NotificationType = 'success' | 'error' | 'info' | 'warning' | 'email';
 
 export interface Notification {
   id: string;
@@ -96,6 +96,8 @@ function NotificationItem({
         return '✕';
       case 'warning':
         return '⚠';
+      case 'email':
+        return '📧';
       case 'info':
       default:
         return 'ℹ';
@@ -105,14 +107,16 @@ function NotificationItem({
   const getStyles = () => {
     switch (notification.type) {
       case 'success':
-        return 'bg-green-50 border-green-200 text-green-800';
+        return 'bg-green-100 border-green-300 text-green-900';
       case 'error':
-        return 'bg-red-50 border-red-200 text-red-800';
+        return 'bg-red-100 border-red-300 text-red-900';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+        return 'bg-yellow-100 border-yellow-300 text-yellow-900';
+      case 'email':
+        return 'bg-blue-100 border-blue-300 text-blue-900';
       case 'info':
       default:
-        return 'bg-blue-50 border-blue-200 text-blue-800';
+        return 'bg-blue-100 border-blue-300 text-blue-900';
     }
   };
 
@@ -130,7 +134,7 @@ function NotificationItem({
         </div>
         <div className="ml-4 flex-shrink-0 flex">
           <button
-            className="inline-flex text-gray-400 hover:text-gray-600 focus:outline-none"
+            className="inline-flex text-gray-600 hover:text-gray-800 focus:outline-none"
             onClick={onClose}
           >
             <span className="sr-only">Close</span>
