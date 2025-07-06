@@ -99,50 +99,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Force loading to false after 5 seconds as a fallback
+    const loadingTimeout = setTimeout(() => {
+      if (mounted) {
+        console.log('Loading timeout reached, forcing isLoading to false');
+        setState(prev => ({ ...prev, isLoading: false }));
+      }
+    }, 5000);
+
     checkSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
+      console.log('Auth state changed:', event, session?.user?.email, 'Email confirmed:', !!session?.user?.email_confirmed_at);
       
       if (!mounted) return;
       
       if (session?.user) {
-        // Check if user's email is confirmed before allowing authentication
-        if (session.user.email_confirmed_at || event === 'SIGNED_IN') {
-          const authUser: AuthUser = {
-            id: session.user.id,
-            email: session.user.email!,
-            name: session.user.user_metadata?.full_name || session.user.email!.split('@')[0],
-            avatar: session.user.user_metadata?.avatar_url
-          };
+        const authUser: AuthUser = {
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.user_metadata?.full_name || session.user.email!.split('@')[0],
+          avatar: session.user.user_metadata?.avatar_url
+        };
 
-          console.log('Setting authenticated user from auth state change:', authUser);
-          
-          // If this is a sign-in event or first time user, create/check profile
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            console.log('Creating/checking profile for authenticated user');
-            await createUserProfile(session.user);
-          }
-
-          setState({
-            isAuthenticated: true,
-            user: authUser,
-            supabaseUser: session.user,
-            token: session.access_token,
-            isLoading: false,
-          });
-        } else {
-          // User exists but email not confirmed
-          console.log('User email not confirmed yet, keeping user signed out');
-          setState({
-            isAuthenticated: false,
-            user: null,
-            supabaseUser: null,
-            token: null,
-            isLoading: false,
-          });
+        console.log('Setting authenticated user from auth state change:', authUser);
+        
+        // Create/check profile for authenticated user
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          console.log('Creating/checking profile for authenticated user');
+          await createUserProfile(session.user);
         }
+
+        setState({
+          isAuthenticated: true,
+          user: authUser,
+          supabaseUser: session.user,
+          token: session.access_token,
+          isLoading: false,
+        });
       } else {
         console.log('Clearing user from auth state change');
         setState({
@@ -157,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(loadingTimeout);
       subscription?.unsubscribe();
     };
   }, []);
@@ -178,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState(prev => ({ ...prev, isLoading: false }));
         
         // Check if it's an email not confirmed error
-        if (error.message.includes('Email not confirmed') || error.message.includes('signup_disabled')) {
+        if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
           return { success: false, needsConfirmation: true };
         }
         
@@ -187,8 +183,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log('Login successful:', data.user?.email);
       console.log('Auth state after login:', data);
-      // The onAuthStateChange will handle setting the state
-      // Don't set isLoading to false here, let the auth state change handle it
+      
+      // The auth state change listener will handle setting isLoading to false
+      // But also set a timeout as a fallback
+      setTimeout(() => {
+        setState(prev => ({ ...prev, isLoading: false }));
+      }, 2000);
+      
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
@@ -226,19 +227,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false };
       }
       
-      console.log('Registration successful:', authData.user?.email);
-      console.log('Registration data:', authData);
+      console.log('Registration response:', authData);
 
-      // Always assume email confirmation is required for security
-      // Even if Supabase is configured to auto-confirm, we'll show the confirmation message
-      if (authData.user) {
+      // Always set loading to false after registration attempt
+      setState(prev => ({ ...prev, isLoading: false }));
+
+      // Check if the user needs email confirmation
+      if (authData.user && !authData.session) {
+        // Email confirmation required
         console.log('User registered, email confirmation required');
-        setState(prev => ({ ...prev, isLoading: false }));
         return { success: true, needsConfirmation: true };
+      } else if (authData.user && authData.session) {
+        // User is immediately signed in (email confirmation disabled)
+        console.log('User registered and signed in immediately');
+        return { success: true, needsConfirmation: false };
       }
       
-      setState(prev => ({ ...prev, isLoading: false }));
-      return { success: true, needsConfirmation: false };
+      return { success: true, needsConfirmation: true };
     } catch (error) {
       console.error('Registration error:', error);
       setState(prev => ({ ...prev, isLoading: false }));

@@ -42,13 +42,13 @@ export default function AuthCallback() {
             const { data: profile } = await supabase
               .from('profiles')
               .select('*')
-              .eq('user_id', user.id)
+              .eq('id', user.id)
               .single();
 
             if (!profile) {
               console.log('Creating user profile...');
               await supabase.from('profiles').insert({
-                user_id: user.id,
+                id: user.id,
                 email: user.email || '',
                 full_name: user.user_metadata?.full_name || '',
                 created_at: new Date().toISOString(),

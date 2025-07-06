@@ -107,24 +107,36 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: RegisterFormP
       return;
     }
 
+    console.log('Registration form submitted with:', { email, fullName });
+    
     const result = await register({ email, password, confirmPassword, name: fullName });
+    
+    console.log('Registration result:', result);
     
     if (result.success) {
       if (result.needsConfirmation) {
         addNotification({
           type: 'info',
           title: 'Check Your Email! 📧',
-          message: 'We sent you a confirmation link. Please check your email and click the link to activate your account.',
+          message: `We sent a confirmation link to ${email}. Please check your email (including spam folder) and click the link to activate your account.`,
         });
+        console.log('Registration successful, email confirmation required');
       } else {
         addNotification({
           type: 'success',
           title: 'Account Created Successfully! 🎉',
           message: 'Welcome to HealTrack! Your account is ready to use.',
         });
+        console.log('Registration successful, no email confirmation required');
       }
       onClose();
     } else {
+      console.error('Registration failed');
+      addNotification({
+        type: 'error',
+        title: 'Registration Failed',
+        message: 'Registration failed. Please check your information and try again.',
+      });
       setErrors({ general: 'Registration failed. Please try again.' });
     }
   };
